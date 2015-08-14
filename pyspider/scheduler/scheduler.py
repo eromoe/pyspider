@@ -399,6 +399,9 @@ class Scheduler(object):
                 if not self.task_verify(task):
                     continue
 
+                if self._check_bloomfiter_contains(task['url']):
+                    continue
+
                 if task['taskid'] in self.projects[task['project']].task_queue:
                     if not task.get('schedule', {}).get('force_update', False):
                         logger.debug('ignore newtask %(project)s:%(taskid)s %(url)s', task)

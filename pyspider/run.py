@@ -191,9 +191,20 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
     g = ctx.obj
     Scheduler = load_cls(None, None, scheduler_cls)
 
+    if bloomfilter_on:
+        if os.name == 'nt':
+            from pyspider.filter import BloomFilter as Bfilter
+        else:
+            from pyspider.filter import RedisBloomFilter as Bfilter
+
+        bloomfilter = Bfilter('pyspider', 1000000, 0.0001)
+    else:
+        bloomfilter = None
+
     kwargs = dict(taskdb=g.taskdb, projectdb=g.projectdb, resultdb=g.resultdb,
                   newtask_queue=g.newtask_queue, status_queue=g.status_queue,
-                  out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'))
+                  out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'), 
+                  bloomfilter=bloomfilter)
     if threads:
         kwargs['threads'] = int(threads)
 
