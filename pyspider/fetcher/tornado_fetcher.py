@@ -63,6 +63,7 @@ class Fetcher(object):
         },
         'use_gzip': True,
         'timeout': 120,
+        'use_last_url': False,
     }
     phantomjs_proxy = None
 

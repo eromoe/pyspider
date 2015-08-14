@@ -38,7 +38,7 @@ class Scheduler(object):
     DELETE_TIME = 24 * 60 * 60
 
     def __init__(self, taskdb, projectdb, newtask_queue, status_queue,
-                 out_queue, data_path='./data', resultdb=None):
+                 out_queue, data_path='./data', resultdb=None, bloomfilter=None):
         self.taskdb = taskdb
         self.projectdb = projectdb
         self.resultdb = resultdb
@@ -46,6 +46,9 @@ class Scheduler(object):
         self.status_queue = status_queue
         self.out_queue = out_queue
         self.data_path = data_path
+        self.bloomfilter = bloomfilter
+        if self.bloomfilter:
+            self._check_bloomfiter_contains = self.bloomfilter.contains
 
         self._send_buffer = deque()
         self._quit = False
@@ -202,6 +205,13 @@ class Scheduler(object):
             else:
                 raise
 
+    def _check_bloomfiter_contains(self, key):
+        return False
+
+    def _check_task_url_duplicate(self, task):
+        ''' check duplicate tasks '''
+        return self._check_bloomfiter_contains(task['url'])
+
     def _check_task_done(self):
         '''Check status queue'''
         cnt = 0
@@ -241,6 +251,9 @@ class Scheduler(object):
 
             for task in _tasks:
                 if not self.task_verify(task):
+                    continue
+
+                if self._check_bloomfiter_contains(task['url']):
                     continue
 
                 if task['taskid'] in self.task_queue[task['project']]:

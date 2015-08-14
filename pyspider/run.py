@@ -164,6 +164,7 @@ def cli(ctx, **kwargs):
 @click.option('--xmlrpc/--no-xmlrpc', default=True)
 @click.option('--xmlrpc-host', default='0.0.0.0')
 @click.option('--xmlrpc-port', envvar='SCHEDULER_XMLRPC_PORT', default=23333)
+@click.option('--bloomfilter-on/--bloomfilter-off', default=False)
 @click.option('--inqueue-limit', default=0,
               help='size limit of task queue for each project, '
               'tasks will been ignored when overflow')
@@ -182,9 +183,20 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
     g = ctx.obj
     Scheduler = load_cls(None, None, scheduler_cls)
 
+    if bloomfilter_on:
+        if os.name == 'nt':
+            from pyspider.filter import BloomFilter as Bfilter
+        else:
+            from pyspider.filter import RedisBloomFilter as Bfilter
+
+        bloomfilter = Bfilter('pyspider', 1000000, 0.0001)
+    else:
+        bloomfilter = None
+
     scheduler = Scheduler(taskdb=g.taskdb, projectdb=g.projectdb, resultdb=g.resultdb,
                           newtask_queue=g.newtask_queue, status_queue=g.status_queue,
-                          out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'))
+                          out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'), 
+                          bloomfilter=bloomfilter)
     scheduler.INQUEUE_LIMIT = inqueue_limit
     scheduler.DELETE_TIME = delete_time
     scheduler.ACTIVE_TASKS = active_tasks
@@ -196,6 +208,7 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
 
     if xmlrpc:
         utils.run_in_thread(scheduler.xmlrpc_run, port=xmlrpc_port, bind=xmlrpc_host)
+
     scheduler.run()
 
 
