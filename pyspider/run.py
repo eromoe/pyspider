@@ -176,7 +176,7 @@ def cli(ctx, **kwargs):
               help='scheduler class to be used.')
 @click.pass_context
 def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
-              inqueue_limit, delete_time, active_tasks, loop_limit, scheduler_cls):
+              inqueue_limit, delete_time, active_tasks, loop_limit, bloomfilter_on, scheduler_cls):
     """
     Run Scheduler, only one scheduler is allowed.
     """
