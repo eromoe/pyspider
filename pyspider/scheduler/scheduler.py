@@ -175,6 +175,10 @@ class Scheduler(object):
         self.status_queue = status_queue
         self.out_queue = out_queue
         self.data_path = data_path
+        self.bloomfilter = bloomfilter
+        if self.bloomfilter:
+            self.bloomfilter.fromfile()
+            self._bloomfiter_add = self.bloomfilter.add
 
         self._send_buffer = deque()
         self._quit = False
@@ -344,6 +348,13 @@ class Scheduler(object):
             else:
                 raise
 
+    def _bloomfiter_add(self, key):
+        return False
+
+    def _check_task_url_duplicate(self, task):
+        ''' check duplicate tasks '''
+        return self._check_bloomfiter_contains(task['url'])
+
     def _check_task_done(self):
         '''Check status queue'''
         cnt = 0
@@ -399,7 +410,10 @@ class Scheduler(object):
                 if not self.task_verify(task):
                     continue
 
-                if self._check_bloomfiter_contains(task['url']):
+                seen = self._bloomfiter_add(task['url'])
+                logger.info('bloomfiter url %s  seen :%s' % (task['url'], seen))
+                if seen:
+                    logger.info('bloomfiter ignore newtask %(project)s:%(taskid)s %(url)s', task)
                     continue
 
                 if task['taskid'] in self.projects[task['project']].task_queue:
@@ -1150,6 +1164,8 @@ class OneScheduler(Scheduler):
 
     def quit(self):
         self.ioloop.stop()
+        if self.bloomfilter:
+            self.bloomfilter.tofile()
         logger.info("scheduler exiting...")
 
 

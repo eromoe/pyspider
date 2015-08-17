@@ -79,8 +79,10 @@ class RedisBloomFilter(BaseFilter):
 
 
 class BloomFilter(BaseFilter):
-	def __init__(self, key, capacity=10000, error_rate=0.001, store_dir='~/pybloom'):
-		if not os.path.exists(store_dir):
+	def __init__(self, key, capacity=10000, error_rate=0.001, store_dir=None):
+		if not store_dir:
+			store_dir = os.path.expanduser('~')
+		elif not os.path.exists(store_dir):
 			os.makedirs(store_dir)
 
 		self.key = key
@@ -106,7 +108,7 @@ class BloomFilter(BaseFilter):
 		if hasattr(values, '__iter__'):
 			return [v in self.bf for v in value]
 		else:
-			return v in self.bf
+			return values in self.bf
 
 	def tofile(self):
 		with open(self.path, 'wb') as f:
@@ -115,3 +117,12 @@ class BloomFilter(BaseFilter):
 	def fromfile(self):
 		with open(self.path, 'rb') as f:
 			self.bf.fromfile(f)
+
+
+if __name__ == '__main__':
+	bf = BloomFilter('pyspider', 10000, 0.0001)
+	import random
+	s = str(random.random())
+	print bf.add(s)
+	print bf.add(s)
+	print bf.add(s)
