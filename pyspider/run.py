@@ -184,7 +184,7 @@ def cli(ctx, **kwargs):
 @click.pass_context
 def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
               inqueue_limit, delete_time, active_tasks, loop_limit, fail_pause_num,
-              scheduler_cls, threads, bloomfilter_on, get_object=False):
+              scheduler_cls, threads, bloomfilter_on, bloomfilter_rpc, get_object=False):
     """
     Run Scheduler, only one scheduler is allowed.
     """

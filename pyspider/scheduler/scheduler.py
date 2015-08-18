@@ -167,7 +167,7 @@ class Scheduler(object):
     REQUEST_PACK = 3  # current not used
 
     def __init__(self, taskdb, projectdb, newtask_queue, status_queue,
-                 out_queue, data_path='./data', resultdb=None):
+                 out_queue, data_path='./data', resultdb=None, bloomfilter_rpc=None):
         self.taskdb = taskdb
         self.projectdb = projectdb
         self.resultdb = resultdb

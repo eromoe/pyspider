@@ -1,1 +1,1 @@
-from .bloom_filter import RedisBloomFilter, BloomFilter
+from .bloomfilter import RedisBloomFilter, BloomFilter

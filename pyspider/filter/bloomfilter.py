@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 # vim: set et sw=4 ts=4 sts=4 ff=unix fenc=utf8:
-# Author: eromoe
+# Author: kasim
 # Created on 2015-08-14 22:23:10
 
 import logging
 import pybloom
 import os
-import six
+from six.moves.urllib.parse import urlparse
 
 try:
 	import pyreBloom
 except ImportError:
 	pass
-
 
 logger = logging.getLogger('filter')
 
@@ -45,8 +44,17 @@ logger = logging.getLogger('filter')
 # >>> bf.add('rrrr')
 # True
 
+exclude_host = [
+	'baidu.com',
+	'www.baidu.com',
+	'tieba.baidu.com'
+]
+
 
 class BaseFilter(object):
+	def __init__(self, *args, **kwargs):
+		self._quit = False
+
 	def add(self, value):
 		raise NotImplementedError
 
@@ -62,10 +70,54 @@ class BaseFilter(object):
 	def fromfile(self, key):
 		pass
 
+	def run(self):
+		import time
+		while not self._quit:
+			try:
+				time.sleep(1000)
+			except KeyboardInterrupt:
+				self.quit()
+				logger.info("bloomfilter loop exiting...")
+				break
+
+	def quit(self):
+		'''Quit bloomfilter'''
+		self._running = False
+		self._quit = True
+		self.tofile()
+
+	def xmlrpc_run(self, port=13100, bind='127.0.0.1', logRequests=False):
+		'''Run xmlrpc server'''
+		import umsgpack
+		try:
+			from xmlrpc.server import SimpleXMLRPCServer
+			from xmlrpc.client import Binary
+		except ImportError:
+			from SimpleXMLRPCServer import SimpleXMLRPCServer
+			from xmlrpclib import Binary
+
+		logger.info("bloomfilter starting...")
+
+		server = SimpleXMLRPCServer((bind, port), allow_none=True, logRequests=logRequests)
+		server.register_introspection_functions()
+		server.register_multicall_functions()
+
+		server.register_function(self.quit, '_quit')
+
+		server.register_function(self.add, 'add')
+
+		server.timeout = 0.5
+		while not self._quit:
+			server.handle_request()
+
+		logger.info("bloomfilter exiting...")
+		server.server_close()
+
 
 class RedisBloomFilter(BaseFilter):
-	def __init__(self, key, capacity=10000, error_rate=0.001, host='127.0.0.1', port=6379, password='', db=0):
-		self.bf = pyreBloom.BloomFilter(key, capacity=capacity, error_rate=error_rate)
+	def __init__(self, key, capacity=100000, error_rate=0.001, host='127.0.0.1', port=6379, db=0, password=''):
+		super(RedisBloomFilter, self).__init__()	
+		self.bf = pyreBloom.BloomFilter(key, capacity=capacity, error_rate=error_rate, host='127.0.0.1', port=6379, db=0)
 
 	def add(self, value):
 		return not bool(self.bf.add(value))
@@ -79,7 +131,8 @@ class RedisBloomFilter(BaseFilter):
 
 
 class BloomFilter(BaseFilter):
-	def __init__(self, key, capacity=10000, error_rate=0.001, store_dir=None):
+	def __init__(self, key, capacity=100000, error_rate=0.001, store_dir=None):
+		super(BloomFilter, self).__init__()
 		if not store_dir:
 			store_dir = os.path.expanduser('~')
 		elif not os.path.exists(store_dir):
