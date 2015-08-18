@@ -164,7 +164,8 @@ def cli(ctx, **kwargs):
 @click.option('--xmlrpc/--no-xmlrpc', default=True)
 @click.option('--xmlrpc-host', default='0.0.0.0')
 @click.option('--xmlrpc-port', envvar='SCHEDULER_XMLRPC_PORT', default=23333)
-@click.option('--bloomfilter-on/--bloomfilter-off', default=False)
+@click.option('--bloomfilter-on/--bloomfilter-off', default=True)
+@click.option('--bloomfilter-rpc', callback=connect_rpc, help='xmlrpc path of bloomfilter')
 @click.option('--inqueue-limit', default=0,
               help='size limit of task queue for each project, '
               'tasks will been ignored when overflow')
@@ -176,7 +177,7 @@ def cli(ctx, **kwargs):
               help='scheduler class to be used.')
 @click.pass_context
 def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
-              inqueue_limit, delete_time, active_tasks, loop_limit, bloomfilter_on, scheduler_cls):
+              inqueue_limit, delete_time, active_tasks, loop_limit, bloomfilter_on, bloomfilter_rpc, scheduler_cls):
     """
     Run Scheduler, only one scheduler is allowed.
     """
@@ -184,19 +185,20 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
     Scheduler = load_cls(None, None, scheduler_cls)
 
     if bloomfilter_on:
-        if os.name == 'nt':
-            from pyspider.filter import BloomFilter as Bfilter
-        else:
-            from pyspider.filter import RedisBloomFilter as Bfilter
-
-        bloomfilter = Bfilter('pyspider', 1000000, 0.0001)
+        bloomfilter_config = g.config.get('bloomfilter', {})
+        bloomfilter_config.setdefault('xmlrpc_host', '127.0.0.1')
+        bloomfilter_config.setdefault('xmlrpc_port', 13100)
+        bloomfilter_rpc = connect_rpc(ctx, None,
+                                    'http://%(xmlrpc_host)s:%(xmlrpc_port)s/' % bloomfilter_config)
     else:
-        bloomfilter = None
+        bloomfilter_rpc = None
+
 
     scheduler = Scheduler(taskdb=g.taskdb, projectdb=g.projectdb, resultdb=g.resultdb,
                           newtask_queue=g.newtask_queue, status_queue=g.status_queue,
                           out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'), 
-                          bloomfilter=bloomfilter)
+                          bloomfilter_rpc=bloomfilter_rpc)
+
     scheduler.INQUEUE_LIMIT = inqueue_limit
     scheduler.DELETE_TIME = delete_time
     scheduler.ACTIVE_TASKS = active_tasks
@@ -210,6 +212,45 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
         utils.run_in_thread(scheduler.xmlrpc_run, port=xmlrpc_port, bind=xmlrpc_host)
 
     scheduler.run()
+
+
+@cli.command()
+@click.option('--xmlrpc/--no-xmlrpc', default=True)
+@click.option('--xmlrpc-host', default='0.0.0.0')
+@click.option('--xmlrpc-port', envvar='BLOOMFILTER_XMLRPC_PORT', default=13100)
+@click.option('--key', default='pyspider')
+@click.option('--capacity', default=100000)
+@click.option('--error', default=0.001)
+@click.option('--redis', default='//127.0.0.1:6379/0')
+# @click.option('--bloomfilter-cls', default='pyspider.filter.Scheduler', callback=load_cls,
+#               help='bloomfilter class to be used.')
+@click.pass_context
+def bloomfilter(ctx, xmlrpc, xmlrpc_host, xmlrpc_port, key, capacity, error, redis):
+    """
+    Run bloomfilter, only one bloomfilter is allowed.
+    """
+    g = ctx.obj
+
+    if os.name == 'nt':
+        from pyspider.filter import BloomFilter
+        bloomfilter = BloomFilter(key, capacity, error)
+    else:
+        from pyspider.filter import RedisBloomFilter
+        from six.moves.urllib.parse import urlparse
+        parsed = urlparse(url)
+        # ParseResult(scheme='', netloc='127.0.0.1:6379', path='/0', params='', query='', fragment='')
+        bloomfilter = RedisBloomFilter(key, capacity, error, 
+            parsed.hostname, parsed.port, int(parsed.path.strip('/') or 0))
+
+    g.instances.append(bloomfilter)
+    if g.get('testing_mode'):
+        return bloomfilter
+
+
+    if xmlrpc:
+        utils.run_in_thread(bloomfilter.xmlrpc_run, port=xmlrpc_port, bind=xmlrpc_host)
+    bloomfilter.run()
+
 
 
 @cli.command()

@@ -252,8 +252,15 @@ class BaseHandler(object):
             kwargs.setdefault('method', 'POST')
 
         schedule = {}
-        for key in ('priority', 'retries', 'exetime', 'age', 'itag', 'force_update',
-                    'auto_recrawl'):
+        for key in ('priority', 
+                    'retries', 
+                    'exetime', 
+                    'age', 
+                    'itag', 
+                    'force_update',
+                    'auto_recrawl',
+                    'ignore_filter',
+        ):
             if key in kwargs:
                 schedule[key] = kwargs.pop(key)
         task['schedule'] = schedule
