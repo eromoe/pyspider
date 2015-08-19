@@ -256,14 +256,11 @@ class Scheduler(object):
                     continue
 
                 # logger.info('task: %s', task)
-
                 # logger.info('ignore_filter %s  ' % (task['fetch']['ignore_filter'], )) 
                 if not task.get('schedule', {}).get('ignore_filter', False) and task['taskid']!='on_start':
-                    seen = self._bloomfilter_add(task['url'])
-                    logger.info('bloomfilter url %s  seen :%s' % (task['url'], seen))
-                    if seen:
+                    if self._bloomfilter_add(task['url']):
                         logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
-                    continue
+                        continue
 
                 if task['taskid'] in self.task_queue[task['project']]:
                     if not task.get('schedule', {}).get('force_update', False):
@@ -277,6 +274,7 @@ class Scheduler(object):
                 tasks[task['taskid']] = task
 
         for task in itervalues(tasks):
+
             if self.INQUEUE_LIMIT and len(self.task_queue[task['project']]) >= self.INQUEUE_LIMIT:
                 logger.debug('overflow task %(project)s:%(taskid)s %(url)s', task)
                 continue

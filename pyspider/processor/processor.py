@@ -174,6 +174,9 @@ class Processor(object):
 
         # FIXME: unicode_obj should used in scheduler before store to database
         # it's used here for performance.
+        # logger.info('process follows :%s' % ret.follows)
+        # logger.info('process messages :%s' % ret.messages)
+        
         if ret.follows:
             self.newtask_queue.put([utils.unicode_obj(newtask) for newtask in ret.follows])
 
