@@ -410,10 +410,14 @@ class Scheduler(object):
                 if not self.task_verify(task):
                     continue
 
-                seen = self._bloomfiter_add(task['url'])
-                logger.info('bloomfiter url %s  seen :%s' % (task['url'], seen))
-                if seen:
-                    logger.info('bloomfiter ignore newtask %(project)s:%(taskid)s %(url)s', task)
+                # logger.info('task: %s', task)
+
+                # logger.info('ignore_filter %s  ' % (task['fetch']['ignore_filter'], )) 
+                if not task.get('schedule', {}).get('ignore_filter', False) and task['taskid']!='on_start':
+                    seen = self._bloomfilter_add(task['url'])
+                    logger.info('bloomfilter url %s  seen :%s' % (task['url'], seen))
+                    if seen:
+                        logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
                     continue
 
                 if task['taskid'] in self.projects[task['project']].task_queue:
