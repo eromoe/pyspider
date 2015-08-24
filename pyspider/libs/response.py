@@ -145,10 +145,9 @@ class Response(object):
         return self._json
 
     @property
-    def doc(self):
-        """Returns a PyQuery object of the response's content"""
-        if hasattr(self, '_doc'):
-            return self._doc
+    def xdoc(self):
+        if hasattr(self, '_xdoc'):
+            return self._xdoc
         try:
             parser = lxml.html.HTMLParser(encoding=self.encoding)
             elements = lxml.html.fromstring(self.content, parser=parser)
@@ -159,7 +158,17 @@ class Response(object):
             elements = lxml.html.fromstring(self.content)
         if isinstance(elements, lxml.etree._ElementTree):
             elements = elements.getroot()
-        doc = self._doc = PyQuery(elements)
+
+        self._xdoc = elements
+        return elements
+
+    @property
+    def doc(self):
+        """Returns a PyQuery object of the response's content"""
+        if hasattr(self, '_doc'):
+            return self._doc
+
+        doc = self._doc = PyQuery(self.xdoc)
         doc.make_links_absolute(self.url)
         return doc
 
