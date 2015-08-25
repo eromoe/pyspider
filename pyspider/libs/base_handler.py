@@ -259,7 +259,7 @@ class BaseHandler(object):
                     'itag', 
                     'force_update',
                     'auto_recrawl',
-                    'ignore_filter',
+                    'bloomfilter_on',
         ):
             if key in kwargs:
                 schedule[key] = kwargs.pop(key)

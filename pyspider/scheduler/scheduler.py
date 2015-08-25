@@ -256,19 +256,17 @@ class Scheduler(object):
                     continue
 
                 # logger.info('task: %s', task)
-                # logger.info('ignore_filter %s  ' % (task['fetch']['ignore_filter'], )) 
-                if not task.get('schedule', {}).get('ignore_filter', False) and task['taskid']!='on_start':
-                    if self._bloomfilter_add(task['url']):
-                        logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
-                        continue
+                if not task.get('schedule', {}).get('force_update', False):
+                    if task.get('schedule', {}).get('bloomfilter_on', False) and task['taskid']!='on_start':
+                        if self._bloomfilter_add(task['url']):
+                            logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
+                            continue
 
-                if task['taskid'] in self.task_queue[task['project']]:
-                    if not task.get('schedule', {}).get('force_update', False):
+                    if task['taskid'] in self.task_queue[task['project']]:
                         logger.debug('ignore newtask %(project)s:%(taskid)s %(url)s', task)
                         continue
 
-                if task['taskid'] in tasks:
-                    if not task.get('schedule', {}).get('force_update', False):
+                    if task['taskid'] in tasks:
                         continue
 
                 tasks[task['taskid']] = task
