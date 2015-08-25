@@ -21,6 +21,9 @@ def result():
     limit = int(request.args.get('limit', 20))
 
     count = resultdb.count(project)
+    if not isinstance(count, int):
+        count = 0
+
     results = list(resultdb.select(project, offset=offset, limit=limit))
 
     return render_template(
