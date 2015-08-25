@@ -7,6 +7,7 @@
 
 
 import os
+import sys
 import six
 import copy
 import time
@@ -88,6 +89,8 @@ def cli(ctx, **kwargs):
     """
     A powerful spider system in python.
     """
+    
+    sys.path.insert(0, os.getcwd())
     logging.config.fileConfig(kwargs['logging_config'])
 
     # get db from env
