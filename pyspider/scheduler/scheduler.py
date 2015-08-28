@@ -150,6 +150,7 @@ class Scheduler(object):
     ACTIVE_TASKS = 100
     INQUEUE_LIMIT = 0
     EXCEPTION_LIMIT = 3
+    DELAY_BASE_TIME = 60
     DELETE_TIME = 24 * 60 * 60
     DEFAULT_RETRY_DELAY = {
         0: 30,
@@ -935,6 +936,12 @@ class Scheduler(object):
 
         retries = task['schedule'].get('retries', self.default_schedule['retries'])
         retried = task['schedule'].get('retried', 0)
+        if retried == 0:
+            next_exetime = 0
+        elif retried == 1:
+            next_exetime = DELAY_BASE_TIME
+        else:
+            next_exetime = (2 ** retried) * DELAY_BASE_TIME
 
         project_info = self.projects[task['project']]
         retry_delay = project_info.retry_delay or self.DEFAULT_RETRY_DELAY
