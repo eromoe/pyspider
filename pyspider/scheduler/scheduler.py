@@ -36,6 +36,7 @@ class Scheduler(object):
     ACTIVE_TASKS = 100
     INQUEUE_LIMIT = 0
     EXCEPTION_LIMIT = 3
+    DELAY_BASE_TIME = 60
     DELETE_TIME = 24 * 60 * 60
 
     def __init__(self, taskdb, projectdb, newtask_queue, status_queue,
@@ -697,9 +698,9 @@ class Scheduler(object):
         if retried == 0:
             next_exetime = 0
         elif retried == 1:
-            next_exetime = 1 * 60 * 60
+            next_exetime = DELAY_BASE_TIME
         else:
-            next_exetime = 6 * (2 ** retried) * 60 * 60
+            next_exetime = (2 ** retried) * DELAY_BASE_TIME
 
         if task['schedule'].get('auto_recrawl') and 'age' in task['schedule']:
             next_exetime = min(next_exetime, task['schedule'].get('age'))
