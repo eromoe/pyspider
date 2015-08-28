@@ -47,12 +47,6 @@ class TaskDB(SplitTableMixin, BaseTaskDB):
                     data[each] = {}
         return data
 
-    def _stringify(self, data):
-        for each in ('schedule', 'fetch', 'process', 'track'):
-            if each in data:
-                data[each] = json.dumps(data[each])
-        return data
-
     def load_tasks(self, status, project=None, fields=None):
         if not project:
             self._list_project()
