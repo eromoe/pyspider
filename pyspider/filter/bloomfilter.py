@@ -44,12 +44,6 @@ logger = logging.getLogger('filter')
 # >>> bf.add('rrrr')
 # True
 
-exclude_host = [
-	'baidu.com',
-	'www.baidu.com',
-	'tieba.baidu.com'
-]
-
 
 class BaseFilter(object):
 	def __init__(self, *args, **kwargs):
@@ -141,8 +135,7 @@ class BloomFilter(BaseFilter):
 		self.key = key
 		self.path = os.path.join(store_dir, key)
 
-		if os.path.exists(self.path):
-			logger.warn('BloomFilter path:%s  already exists, the file would be overwrite when call tofile , be careful !' % self.path)
+		self.fromfile()
 
 		self.bf = pybloom.BloomFilter(capacity=capacity, error_rate=error_rate)
 
@@ -164,6 +157,7 @@ class BloomFilter(BaseFilter):
 			return values in self.bf
 
 	def tofile(self):
+		logger.info("save data to %s" % self.path)
 		with open(self.path, 'wb') as f:
 			self.bf.tofile(f)
 
@@ -175,7 +169,7 @@ class BloomFilter(BaseFilter):
 			except Exception as e:
 				print('BloomFilter fromfile error: %s' % e) 
 			else:
-				print('BloomFilter load from: %s' % self.path) 
+				print('BloomFilter load data from: %s' % self.path)
 
 
 if __name__ == '__main__':
