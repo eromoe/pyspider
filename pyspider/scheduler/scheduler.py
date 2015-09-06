@@ -140,7 +140,7 @@ class Scheduler(object):
             _schedule = task.get('schedule', self.default_schedule)
             priority = _schedule.get('priority', self.default_schedule['priority'])
             exetime = _schedule.get('exetime', self.default_schedule['exetime'])
-            self.task_queue[project].put(taskid, priority, exetime)
+            self.task_queue[project].put(taskid, task, priority, exetime)
         logger.debug('project: %s loaded %d tasks.', project, len(self.task_queue[project]))
 
         if self.projects[project]['status'] in ('RUNNING', 'DEBUG'):
@@ -189,6 +189,7 @@ class Scheduler(object):
         _schedule = task.get('schedule', self.default_schedule)
         self.task_queue[task['project']].put(
             task['taskid'],
+            task,
             priority=_schedule.get('priority', self.default_schedule['priority']),
             exetime=_schedule.get('exetime', self.default_schedule['exetime'])
         )
@@ -343,7 +344,7 @@ class Scheduler(object):
         if self.out_queue.full():
             return {}
 
-        taskids = []
+        task_list = []
         cnt = 0
         cnt_dict = dict()
         limit = self.LOOP_LIMIT
@@ -357,19 +358,16 @@ class Scheduler(object):
 
             # check send_buffer here. when not empty, out_queue may blocked. Not sending tasks
             while cnt < limit and project_cnt < limit / 10:
-                taskid = task_queue.get()
-                if not taskid:
+                task = task_queue.get()
+                if not task:
                     break
 
-                taskids.append((project, taskid))
+                task_list.append(task)
                 project_cnt += 1
                 cnt += 1
             cnt_dict[project] = project_cnt
 
-        for project, taskid in taskids:
-            task = self.taskdb.get_task(project, taskid, fields=self.request_task_fields)
-            if not task:
-                continue
+        for task in task_list:
             task = self.on_select_task(task)
 
         return cnt_dict

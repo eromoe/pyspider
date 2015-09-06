@@ -24,15 +24,16 @@ except NameError:
 
 
 class InQueueTask(DictMixin):
-    __slots__ = ('taskid', 'priority', 'exetime')
+    __slots__ = ('taskid', 'task', 'priority', 'exetime')
     __getitem__ = lambda *x: getattr(*x)
     __setitem__ = lambda *x: setattr(*x)
     __iter__ = lambda self: iter(self.__slots__)
     __len__ = lambda self: len(self.__slots__)
     keys = lambda self: self.__slots__
 
-    def __init__(self, taskid, priority=0, exetime=0):
+    def __init__(self, taskid, task, priority=0, exetime=0):
         self.taskid = taskid
+        self.task = task
         self.priority = priority
         self.exetime = exetime
 
@@ -171,10 +172,10 @@ class TaskQueue(object):
             logger.info("processing: retry %s", task.taskid)
         self.mutex.release()
 
-    def put(self, taskid, priority=0, exetime=0):
+    def put(self, taskid, task, priority=0, exetime=0):
         '''Put a task into task queue'''
         now = time.time()
-        task = InQueueTask(taskid, priority, exetime)
+        task = InQueueTask(taskid, task, priority, exetime)
         self.mutex.acquire()
         if taskid in self.priority_queue:
             self.priority_queue.put(task)
@@ -206,7 +207,7 @@ class TaskQueue(object):
         task.exetime = now + self.processing_timeout
         self.processing.put(task)
         self.mutex.release()
-        return task.taskid
+        return task.task
 
     def done(self, taskid):
         '''Mark task done'''
