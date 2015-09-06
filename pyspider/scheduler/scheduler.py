@@ -176,6 +176,12 @@ class Scheduler(object):
             return False
         return True
 
+
+    def upsert_task(self, task):
+        '''upsert task into database(mongodb current)'''
+        # mongodb update is upsert
+        return self.taskdb.update(task['project'], task['taskid'], task)
+
     def insert_task(self, task):
         '''insert task into database'''
         return self.taskdb.insert(task['project'], task['taskid'], task)
@@ -279,12 +285,7 @@ class Scheduler(object):
                 logger.debug('overflow task %(project)s:%(taskid)s %(url)s', task)
                 continue
 
-            oldtask = self.taskdb.get_task(task['project'], task['taskid'],
-                                           fields=self.merge_task_fields)
-            if oldtask:
-                task = self.on_old_request(task, oldtask)
-            else:
-                task = self.on_new_request(task)
+            task = self.on_all_request(task)
 
         return len(tasks)
 
@@ -582,6 +583,21 @@ class Scheduler(object):
         while not self._quit:
             server.handle_request()
         server.server_close()
+
+
+    def on_all_request(self, task):
+        '''Called when a request is arrived'''
+        task['status'] = self.taskdb.ACTIVE
+        self.upsert_task(task)
+        self.put_task(task)
+
+        project = task['project']
+        self._cnt['5m'].event((project, 'pending'), +1)
+        self._cnt['1h'].event((project, 'pending'), +1)
+        self._cnt['1d'].event((project, 'pending'), +1)
+        self._cnt['all'].event((project, 'pending'), +1)
+        logger.info('new task %(project)s:%(taskid)s %(url)s', task)
+        return task
 
     def on_new_request(self, task):
         '''Called when a new request is arrived'''
