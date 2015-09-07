@@ -196,8 +196,6 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
     else:
         bloomfilter_rpc = None
 
-    print g.scheduler2fetcher
-
     scheduler = Scheduler(taskdb=g.taskdb, projectdb=g.projectdb, resultdb=g.resultdb,
                           newtask_queue=g.newtask_queue, status_queue=g.status_queue,
                           out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'), 
