@@ -128,7 +128,7 @@ class Scheduler(object):
                 self.task_queue[project['name']].burst = 0
                 del self.task_queue[project['name']]
 
-    scheduler_task_fields = ['taskid', 'project', 'schedule', ]
+    scheduler_task_fields = ['taskid', 'project', 'schedule', 'process', 'fetch']
 
     def _load_tasks(self, project):
         '''load tasks from database'''
