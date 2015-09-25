@@ -20,7 +20,6 @@ if os.name == 'nt':
     import mimetypes
     mimetypes.add_type("text/css", ".css", True)
 
-
 class QuitableFlask(Flask):
     """Add quit() method to Flask object"""
 
@@ -91,12 +90,14 @@ app.secret_key = os.urandom(24)
 app.jinja_env.line_statement_prefix = '#'
 app.jinja_env.globals.update(builtins.__dict__)
 
+
 app.config.update({
     'fetch': lambda x: tornado_fetcher.Fetcher(None, None, async=False).fetch(x)[1],
     'taskdb': None,
     'projectdb': None,
     'scheduler_rpc': None,
     'queues': dict(),
+    'settingdb_url': 'mongodb://10.142.49.230:27088/',
 })
 
 
@@ -113,10 +114,8 @@ def cdn_url_handler(error, endpoint, kwargs):
             reraise(exc_type, exc_value, tb)
         else:
             raise error
+
 app.handle_url_build_error = cdn_url_handler
-
-
-
 
 from flask.ext.restful import Api
 
