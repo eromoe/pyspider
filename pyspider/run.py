@@ -89,8 +89,7 @@ def cli(ctx, **kwargs):
     """
     A powerful spider system in python.
     """
-    
-    sys.path.insert(0, os.getcwd())
+    sys.path.insert(0, os.path.dirname(os.getcwd()))
     logging.config.fileConfig(kwargs['logging_config'])
 
     # get db from env
@@ -198,7 +197,7 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
 
     scheduler = Scheduler(taskdb=g.taskdb, projectdb=g.projectdb, resultdb=g.resultdb,
                           newtask_queue=g.newtask_queue, status_queue=g.status_queue,
-                          out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'), 
+                          out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'),
                           bloomfilter_rpc=bloomfilter_rpc)
 
     scheduler.INQUEUE_LIMIT = inqueue_limit
@@ -223,11 +222,11 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
 @click.option('--key', default='pyspider')
 @click.option('--capacity', default=100000)
 @click.option('--error', default=0.001)
-@click.option('--redis', default='//127.0.0.1:6379/0')
+@click.option('--redis-url', default='//127.0.0.1:6379/0')
 # @click.option('--bloomfilter-cls', default='pyspider.filter.Scheduler', callback=load_cls,
 #               help='bloomfilter class to be used.')
 @click.pass_context
-def bloomfilter(ctx, xmlrpc, xmlrpc_host, xmlrpc_port, key, capacity, error, redis):
+def bloomfilter(ctx, xmlrpc, xmlrpc_host, xmlrpc_port, key, capacity, error, redis_url):
     """
     Run bloomfilter, only one bloomfilter is allowed.
     """
@@ -239,9 +238,9 @@ def bloomfilter(ctx, xmlrpc, xmlrpc_host, xmlrpc_port, key, capacity, error, red
     else:
         from pyspider.filter import RedisBloomFilter
         from six.moves.urllib.parse import urlparse
-        parsed = urlparse(url)
+        parsed = urlparse(redis_url)
         # ParseResult(scheme='', netloc='127.0.0.1:6379', path='/0', params='', query='', fragment='')
-        bloomfilter = RedisBloomFilter(key, capacity, error, 
+        bloomfilter = RedisBloomFilter(key, capacity, error,
             parsed.hostname, parsed.port, int(parsed.path.strip('/') or 0))
 
     g.instances.append(bloomfilter)
