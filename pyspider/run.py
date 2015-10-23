@@ -485,8 +485,8 @@ def phantomjs(ctx, phantomjs_path, port, proxy, proxy_type, ignore_ssl_errors, a
 
 @cli.command()
 @click.option('--phantomjs-path', default='phantomjs', help='phantomjs path')
-@click.option('--port-begin', default=25000, help='phantomjs port')
-@click.option('--amount', default=25000, help='phantomjs port amount')
+@click.option('--port-begin', default=26000, help='phantomjs port')
+@click.option('--amount', default=1, help='phantomjs port amount')
 @click.option('--auto-restart', default=False, help='auto restart phantomjs if crashed')
 @click.pass_context
 def phantomjs_multi(ctx, phantomjs_path, port_begin, amount, auto_restart):
@@ -504,9 +504,6 @@ def phantomjs_multi(ctx, phantomjs_path, port_begin, amount, auto_restart):
            # this may cause memory leak: https://github.com/ariya/phantomjs/issues/12903
            #'--load-images=false',
            phantomjs_fetcher]
-
-
-    str(port)
 
     phantomjs_group = []
 
@@ -587,6 +584,10 @@ def fetcher_phantomjs_multi(ctx, phantomjs_proxy_port_begin, phantomjs_proxy_amo
         for phantomjs_proxy in phantomjs_proxy_list:
             threads.append(run_in(ctx.invoke, fetcher_phantomjs, **{'phantomjs_proxy': phantomjs_proxy}))
     finally:
+        # exit components run in threading
+        for each in g.instances:
+            each.quit()
+
         # exit components run in subprocess
         for each in threads:
             if not each.is_alive():
