@@ -3,7 +3,7 @@
 # @Author: mithril
 # @Date:   2015-09-24 10:10:08
 # @Last Modified by:   mithril
-# @Last Modified time: 2015-10-15 14:45:13
+# @Last Modified time: 2015-11-25 17:22:53
 
 
 import logging
@@ -111,9 +111,9 @@ class BaseFilter(object):
 
 
 class RedisBloomFilter(BaseFilter):
-	def __init__(self, key, capacity=100000, error_rate=0.001, host='127.0.0.1', port=6379, db=0, password=''):
+	def __init__(self, key, capacity=100000, error_rate=0.001, host='127.0.0.1', port=6379, password='', db=0):
 		super(RedisBloomFilter, self).__init__()
-		self.bf = pyreBloom.BloomFilter(key, capacity=capacity, error_rate=error_rate, host='127.0.0.1', port=6379, db=0)
+		self.bf = pyreBloom.pyreBloom(key, capacity, error_rate, host='127.0.0.1', port=6379, password='', db=0)
 
 	def add(self, value):
 		return not bool(self.bf.add(value))

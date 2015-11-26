@@ -226,9 +226,9 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
 @click.option('--xmlrpc-host', default='0.0.0.0')
 @click.option('--xmlrpc-port', envvar='BLOOMFILTER_XMLRPC_PORT', default=13100)
 @click.option('--key', default='pyspider')
-@click.option('--capacity', default=100000)
+@click.option('--capacity', default=10000000)
 @click.option('--error', default=0.001)
-@click.option('--redis-url', default='//127.0.0.1:6379/0')
+@click.option('--redis-url', default='redis://127.0.0.1:6379/0')
 # @click.option('--bloomfilter-cls', default='pyspider.filter.Scheduler', callback=load_cls,
 #               help='bloomfilter class to be used.')
 @click.pass_context

@@ -32,7 +32,7 @@ class Setting(colander.MappingSchema):
     name = colander.SchemaNode(colander.String(), missing='')
     proxy_on = colander.SchemaNode(colander.Boolean(), missing=False)
     js_on = colander.SchemaNode(colander.Boolean(), missing=False)
-    max_depth = colander.SchemaNode(colander.Integer(), validator=colander.Range(0, 20), missing=2)
+    max_depth = colander.SchemaNode(colander.Integer(), validator=colander.Range(0, 20), missing=1)
     extra = colander.SchemaNode(colander.String(), missing='')
 
 

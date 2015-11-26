@@ -4,3 +4,6 @@ newspaper
 goose-extractor
 python-dateutil
 user-agent
+pybloom
+filelock
+demjson
