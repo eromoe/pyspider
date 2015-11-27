@@ -432,22 +432,24 @@ def webui(ctx, host, port, cdn, scheduler_rpc, fetcher_rpc, max_rate, max_burst,
 @click.option('--proxy-type', default=None, help='phantomjs proxy-type [http|socks5|none]')
 @click.option('--ignore-ssl-errors', default=None, help='phantomjs ignore-ssl-errors')
 @click.option('--auto-restart', default=False, help='auto restart phantomjs if crashed')
+@click.argument('args', nargs=-1)
 @click.pass_context
-def phantomjs(ctx, phantomjs_path, port, proxy, proxy_type, ignore_ssl_errors, auto_restart):
+def phantomjs(ctx, phantomjs_path, port, proxy, proxy_type, ignore_ssl_errors, auto_restart, args):
     """
     Run phantomjs fetcher if phantomjs is installed.
     """
+    args = args or ctx.default_map and ctx.default_map.get('args', [])
+
     import subprocess
     g = ctx.obj
     _quit = []
     phantomjs_fetcher = os.path.join(
         os.path.dirname(pyspider.__file__), 'fetcher/phantomjs_fetcher.js')
     cmd = [phantomjs_path,
-           '--ssl-protocol=any',
-           '--disk-cache=true',
            # this may cause memory leak: https://github.com/ariya/phantomjs/issues/12903
            #'--load-images=false',
-           phantomjs_fetcher, str(port)]
+           '--ssl-protocol=any',
+           '--disk-cache=true'] + list(args or []) + [phantomjs_fetcher, str(port)]
 
 
     if proxy != None: cmd.insert(1,"--proxy=%s"%proxy)
