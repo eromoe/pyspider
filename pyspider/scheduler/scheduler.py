@@ -239,7 +239,7 @@ class Scheduler(object):
 
     def _check_request(self):
         '''Check new task queue'''
-        
+
         tasks = {}
         while len(tasks) < self.LOOP_LIMIT:
             try:
@@ -257,12 +257,14 @@ class Scheduler(object):
                     continue
 
                 # logger.info('task: %s', task)
-                if not task.get('schedule', {}).get('force_update', False):
-                    if task.get('schedule', {}).get('bloomfilter_on', False) and task['taskid']!='on_start':
-                        if self._bloomfilter_add(task['url']):
-                            logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
-                            continue
 
+                task_schdule = task.get('schedule', {})
+                if not (task_schdule.get('auto_recrawl', False) or task_schdule.get('force_update', False)) and task_schdule.get('bloomfilter_on', False) and task['taskid']!='on_start':
+                    if self._bloomfilter_add(task['url']):
+                        logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
+                        continue
+
+                if not task_schdule.get('force_update', False):
                     if task['taskid'] in self.task_queue[task['project']]:
                         logger.debug('ignore newtask %(project)s:%(taskid)s %(url)s', task)
                         continue

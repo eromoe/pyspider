@@ -3,7 +3,7 @@
 # @Author: mithril
 # @Date:   2015-09-24 10:10:08
 # @Last Modified by:   mithril
-# @Last Modified time: 2015-11-23 10:30:29
+# @Last Modified time: 2015-11-27 10:46:17
 
 
 import time
@@ -12,7 +12,7 @@ from .const import AccountTypeName, KeywordTypeName, SettingTypeName
 from .base import BaseDB
 
 
-class SpiderBaseCollection(object):
+class SpiderApiCollection(object):
     COLLECTION = None
 
     def __init__(self, db):
@@ -22,18 +22,16 @@ class SpiderBaseCollection(object):
         self.collection = db[self.COLLECTION]
         self.collection.ensure_index('name', unique=True)
 
-    def get(self, key):
-        item = self.collection.find_one({}, {key: 1})
-        return item.get(key, None) if item else None
+    def set(self, name, data):
+        obj = dict()
+        obj['name'] = name
+        obj['data'] = data
+        obj['updatetime'] = time.time()
+        return self.collection.update({'name': name}, {'$set': obj}, upsert=True)
 
-    def set(self, key, value):
-        obj = dict({
-            key: value,
-            'updatetime': time.time()
-        })
-        return self.collection.update(
-            {}, {"$set": obj}, upsert=True
-        )
+    def get(self, name, fields=None):
+        each = self.collection.find_one({'name': name}, fields=fields)
+        return each.get('data') if each else None
 
     # def get(self, key):
     #     item = self.collection.find_one({key: { '$exists': True }}, {key: 1})
@@ -64,15 +62,15 @@ class SpiderBaseCollection(object):
         return details
 
 
-class SpiderSettingColletion(SpiderBaseCollection):
+class SpiderSettingCollection(SpiderApiCollection):
     COLLECTION = 'setting'
 
 
-class SpiderKeywordCollection(SpiderBaseCollection):
+class SpiderKeywordCollection(SpiderApiCollection):
     COLLECTION = 'keyword'
 
 
-class SpiderProxyCollection(SpiderBaseCollection):
+class SpiderProxyCollection(SpiderApiCollection):
     COLLECTION = 'proxy'
 
     def get(self):
@@ -82,7 +80,11 @@ class SpiderProxyCollection(SpiderBaseCollection):
         return super(SpiderProxyCollection, self).set('proxy', value)
 
 
-class SpiderAccountCollection(SpiderBaseCollection):
+class SpiderCookieCollection(SpiderApiCollection):
+    COLLECTION = 'cookie'
+
+
+class SpiderAccountCollection(SpiderApiCollection):
     COLLECTION = 'account'
 
 
@@ -93,10 +95,11 @@ class SpiderSettingDB(BaseDB):
         self.conn = MongoClient(url)
         self.database = self.conn[database]
 
-        self.setting = SpiderSettingColletion(self.database)
+        self.setting = SpiderSettingCollection(self.database)
         self.keyword = SpiderKeywordCollection(self.database)
         self.proxy = SpiderProxyCollection(self.database)
         self.account = SpiderAccountCollection(self.database)
+        self.cookie = SpiderCookieCollection(self.database)
 
     def get_settings(self, name):
         return self.setting.get(name)
@@ -115,6 +118,12 @@ class SpiderSettingDB(BaseDB):
 
     def set_accounts(self, tp, value):
         return self.account.set(tp, value)
+
+    def get_cookie(self, name):
+        return self.cookie.get(name)
+
+    def set_cookie(self, name, value):
+        return self.cookie.set(name, value)
 
     def get_proxies(self):
         return self.proxy.get()
