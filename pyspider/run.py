@@ -92,6 +92,8 @@ def cli(ctx, **kwargs):
     A powerful spider system in python.
     """
 
+    sys.path.insert(0, os.path.dirname(os.getcwd()))
+
     if kwargs['add_sys_path']:
         sys.path.append(os.getcwd())
 

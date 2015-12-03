@@ -7,3 +7,5 @@ user-agent
 pybloom
 filelock
 demjson
+ujson
+rsa
