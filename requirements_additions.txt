@@ -1,0 +1,11 @@
+Flask-RESTful==0.3.4
+colander
+newspaper
+goose-extractor
+python-dateutil
+user-agent
+pybloom
+filelock
+demjson
+ujson
+rsa

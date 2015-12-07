@@ -91,11 +91,14 @@ def cli(ctx, **kwargs):
     """
     A powerful spider system in python.
     """
+<<<<<<< HEAD
     
     sys.path.insert(0, os.getcwd())
+=======
     if kwargs['add_sys_path']:
         sys.path.append(os.getcwd())
 
+>>>>>>> e8a7e0b0d1efd12e81cb1b5c913be3dfce722309
     logging.config.fileConfig(kwargs['logging_config'])
 
     # get db from env

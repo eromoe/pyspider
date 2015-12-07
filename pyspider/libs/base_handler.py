@@ -134,6 +134,7 @@ class BaseHandler(object):
     _cron_jobs = []
     _min_tick = 0
     __env__ = {'not_inited': True}
+    retry_delay = {}
 
     def _reset(self):
         """
@@ -219,7 +220,7 @@ class BaseHandler(object):
         """
         task = {}
 
-        assert len(url) < 1024, "Maximum URL length error: len(url) > 1024"
+        assert len(url) < 1024, "Maximum (1024) URL length error."
 
         if kwargs.get('callback'):
             callback = kwargs['callback']
@@ -232,10 +233,16 @@ class BaseHandler(object):
                 raise NotImplementedError("self.%s() not implemented!" % callback)
             if hasattr(func, '_config'):
                 for k, v in iteritems(func._config):
-                    kwargs.setdefault(k, v)
+                    if isinstance(v, dict) and isinstance(kwargs.get(k), dict):
+                        kwargs[k].update(v)
+                    else:
+                        kwargs.setdefault(k, v)
 
         for k, v in iteritems(self.crawl_config):
-            kwargs.setdefault(k, v)
+            if isinstance(v, dict) and isinstance(kwargs.get(k), dict):
+                kwargs[k].update(v)
+            else:
+                kwargs.setdefault(k, v)
 
         url = quote_chinese(_build_url(url.strip(), kwargs.pop('params', None)))
         if kwargs.get('files'):
@@ -284,6 +291,8 @@ class BaseHandler(object):
                 'load_images',
                 'fetch_type',
                 'use_gzip',
+                'validate_cert',
+                'max_redirects'
         ):
             if key in kwargs:
                 fetch[key] = kwargs.pop(key)
@@ -417,3 +426,7 @@ class BaseHandler(object):
         for each in response.save or []:
             if each == 'min_tick':
                 self.save[each] = self._min_tick
+            elif each == 'retry_delay':
+                if not isinstance(self.retry_delay, dict):
+                    self.retry_delay = {'': self.retry_delay}
+                self.save[each] = self.retry_delay

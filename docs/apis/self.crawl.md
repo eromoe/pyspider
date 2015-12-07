@@ -18,7 +18,7 @@ def on_start(self):
 
 the following parameters are optional
 
-* `age` - the period of validity of the task. The page would be regarded as not modified during the period. _default: 0(never recrawl)_ <a name="age" href="#age">¶</a>
+* `age` - the period of validity of the task. The page would be regarded as not modified during the period. _default: -1(never recrawl)_ <a name="age" href="#age">¶</a>
 
 ```python
 @config(age=10 * 24 * 60 * 60)
@@ -101,6 +101,7 @@ def on_start(self):
 * `cookies` - dictionary of cookies to attach to this request. <a name="cookies" href="#cookies">¶</a>
 * `timeout` - maximum time in seconds to fetch the page. _default: 120_ <a name="timeout" href="#timeout">¶</a>
 * `allow_redirects` - follow `30x` redirect _default: True_ <a name="allow_redirects" href="#allow_redirects">¶</a>
+* `validate_cert` - For HTTPS requests, validate the server’s certificate? _default: True_ <a name="validate_cert" href="#validate_cert">¶</a>
 * `proxy` - proxy server of `username:password@hostname:port` to use, only http proxy is supported currently. <a name="proxy" href="#proxy">¶</a>
 
 ```python

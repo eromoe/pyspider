@@ -145,12 +145,38 @@ class Response(object):
         return self._json
 
     @property
+<<<<<<< HEAD
+    def xdoc(self):
+        if hasattr(self, '_xdoc'):
+            return self._xdoc
+        try:
+            parser = lxml.html.HTMLParser(encoding=self.encoding)
+            elements = lxml.html.fromstring(self.content, parser=parser)
+        except LookupError:
+            # lxml would raise LookupError when encoding not supported
+            # try fromstring without encoding instead.
+            # on windows, unicode is not availabe as encoding for lxml
+            elements = lxml.html.fromstring(self.content)
+        if isinstance(elements, lxml.etree._ElementTree):
+            elements = elements.getroot()
+
+        self._xdoc = elements
+        return elements
+
+    @property
+=======
+>>>>>>> e8a7e0b0d1efd12e81cb1b5c913be3dfce722309
     def doc(self):
         """Returns a PyQuery object of the response's content"""
         if hasattr(self, '_doc'):
             return self._doc
+<<<<<<< HEAD
+
+        doc = self._doc = PyQuery(self.xdoc)
+=======
         elements = self.etree
         doc = self._doc = PyQuery(elements)
+>>>>>>> e8a7e0b0d1efd12e81cb1b5c913be3dfce722309
         doc.make_links_absolute(self.url)
         return doc
 
