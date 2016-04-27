@@ -7,18 +7,19 @@
 
 import pdb
 
-import os
-import json
-import time
-import logging
 import itertools
+import json
+import logging
+import os
+import time
 from collections import deque
 
 from six import iteritems, itervalues
+from six.moves import queue as Queue
 
 from pyspider.libs import counter, utils
-from six.moves import queue as Queue
 from .task_queue import TaskQueue
+
 logger = logging.getLogger('scheduler')
 
 
@@ -67,6 +68,7 @@ class Scheduler(object):
         self._last_update_project = 0
         self.task_queue = dict()
         self._last_tick = int(time.time())
+        self._sent_finished_event = dict()
 
         self._cnt = {
             "5m_time": counter.CounterManager(
@@ -135,6 +137,9 @@ class Scheduler(object):
                 self.task_queue[project['name']].burst = 0
                 del self.task_queue[project['name']]
 
+            if project not in self._cnt['all']:
+                self._update_project_cnt(project['name'])
+
     scheduler_task_fields = ['taskid', 'project', 'schedule', ]
 
     def _load_tasks(self, project):
@@ -158,16 +163,23 @@ class Scheduler(object):
             self.task_queue[project].burst = 0
 
         if project not in self._cnt['all']:
-            status_count = self.taskdb.status_count(project)
-            self._cnt['all'].value(
-                (project, 'success'),
-                status_count.get(self.taskdb.SUCCESS, 0)
-            )
-            self._cnt['all'].value(
-                (project, 'failed'),
-                status_count.get(self.taskdb.FAILED, 0) + status_count.get(self.taskdb.BAD, 0)
-            )
+            self._update_project_cnt(project)
         self._cnt['all'].value((project, 'pending'), len(self.task_queue[project]))
+
+    def _update_project_cnt(self, project):
+        status_count = self.taskdb.status_count(project)
+        self._cnt['all'].value(
+            (project, 'success'),
+            status_count.get(self.taskdb.SUCCESS, 0)
+        )
+        self._cnt['all'].value(
+            (project, 'failed'),
+            status_count.get(self.taskdb.FAILED, 0) + status_count.get(self.taskdb.BAD, 0)
+        )
+        self._cnt['all'].value(
+            (project, 'pending'),
+            status_count.get(self.taskdb.ACTIVE, 0)
+        )
 
     def task_verify(self, task):
         '''
@@ -229,6 +241,8 @@ class Scheduler(object):
                 task = self.status_queue.get_nowait()
                 # check _on_get_info result here
                 if task.get('taskid') == '_on_get_info' and 'project' in task and 'track' in task:
+                    if task['project'] not in self.projects:
+                        continue
                     self.projects[task['project']].update(task['track'].get('save') or {})
                     logger.info(
                         '%s on_get_info %r', task['project'], task['track'].get('save', {})
@@ -280,17 +294,7 @@ class Scheduler(object):
                 tasks[task['taskid']] = task
 
         for task in itervalues(tasks):
-
-            if self.INQUEUE_LIMIT and len(self.task_queue[task['project']]) >= self.INQUEUE_LIMIT:
-                logger.debug('overflow task %(project)s:%(taskid)s %(url)s', task)
-                continue
-
-            oldtask = self.taskdb.get_task(task['project'], task['taskid'],
-                                           fields=self.merge_task_fields)
-            if oldtask:
-                task = self.on_old_request(task, oldtask)
-            else:
-                task = self.on_new_request(task)
+            self.on_request(task)
 
         return len(tasks)
 
@@ -371,15 +375,33 @@ class Scheduler(object):
                 taskids.append((project, taskid))
                 project_cnt += 1
                 cnt += 1
+
             cnt_dict[project] = project_cnt
+            if project_cnt:
+                self._sent_finished_event[project] = 'need'
+            # check and send finished event to project
+            elif len(task_queue) == 0 and self._sent_finished_event.get(project) == 'need':
+                self._sent_finished_event[project] = 'sent'
+                self.on_select_task({
+                    'taskid': 'on_finished',
+                    'project': project,
+                    'url': 'data:,on_finished',
+                    'status': self.taskdb.SUCCESS,
+                    'process': {
+                        'callback': 'on_finished',
+                    },
+                })
 
         for project, taskid in taskids:
-            task = self.taskdb.get_task(project, taskid, fields=self.request_task_fields)
-            if not task:
-                continue
-            task = self.on_select_task(task)
+            self._load_put_task(project, taskid)
 
         return cnt_dict
+
+    def _load_put_task(self, project, taskid):
+        task = self.taskdb.get_task(project, taskid, fields=self.request_task_fields)
+        if not task:
+            return
+        task = self.on_select_task(task)
 
     def _print_counter_log(self):
         # print top 5 active counters
@@ -454,6 +476,8 @@ class Scheduler(object):
             self.projectdb.drop(project['name'])
             if self.resultdb:
                 self.resultdb.drop(project['name'])
+            for each in self._cnt.values():
+                del each[project['name']]
 
     def __len__(self):
         return sum(len(x) for x in itervalues(self.task_queue))
@@ -461,6 +485,10 @@ class Scheduler(object):
     def quit(self):
         '''Set quit signal'''
         self._quit = True
+        # stop xmlrpc server
+        if hasattr(self, 'xmlrpc_server'):
+            self.xmlrpc_ioloop.add_callback(self.xmlrpc_server.stop)
+            self.xmlrpc_ioloop.add_callback(self.xmlrpc_ioloop.stop)
 
     def run_once(self):
         '''comsume queues and feed tasks to fetcher, once'''
@@ -508,41 +536,36 @@ class Scheduler(object):
 
     def xmlrpc_run(self, port=23333, bind='127.0.0.1', logRequests=False):
         '''Start xmlrpc interface'''
-        try:
-            from six.moves.xmlrpc_server import SimpleXMLRPCServer
-        except ImportError:
-            from SimpleXMLRPCServer import SimpleXMLRPCServer
+        from pyspider.libs.wsgi_xmlrpc import WSGIXMLRPCApplication
 
-        server = SimpleXMLRPCServer((bind, port), allow_none=True, logRequests=logRequests)
-        server.register_introspection_functions()
-        server.register_multicall_functions()
+        application = WSGIXMLRPCApplication()
 
-        server.register_function(self.quit, '_quit')
-        server.register_function(self.__len__, 'size')
+        application.register_function(self.quit, '_quit')
+        application.register_function(self.__len__, 'size')
 
         def dump_counter(_time, _type):
             try:
                 return self._cnt[_time].to_dict(_type)
             except:
                 logger.exception('')
-        server.register_function(dump_counter, 'counter')
+        application.register_function(dump_counter, 'counter')
 
         def new_task(task):
             if self.task_verify(task):
                 self.newtask_queue.put(task)
                 return True
             return False
-        server.register_function(new_task, 'newtask')
+        application.register_function(new_task, 'newtask')
 
         def send_task(task):
             '''dispatch task to fetcher'''
             self.send_task(task)
             return True
-        server.register_function(send_task, 'send_task')
+        application.register_function(send_task, 'send_task')
 
         def update_project():
             self._force_update_project = True
-        server.register_function(update_project, 'update_project')
+        application.register_function(update_project, 'update_project')
 
         def get_active_tasks(project=None, limit=100):
             allowed_keys = set((
@@ -585,12 +608,29 @@ class Scheduler(object):
             # fix for "<type 'exceptions.TypeError'>:dictionary key must be string"
             # have no idea why
             return json.loads(json.dumps(result))
-        server.register_function(get_active_tasks, 'get_active_tasks')
+        application.register_function(get_active_tasks, 'get_active_tasks')
 
-        server.timeout = 0.5
-        while not self._quit:
-            server.handle_request()
-        server.server_close()
+        import tornado.wsgi
+        import tornado.ioloop
+        import tornado.httpserver
+
+        container = tornado.wsgi.WSGIContainer(application)
+        self.xmlrpc_ioloop = tornado.ioloop.IOLoop()
+        self.xmlrpc_server = tornado.httpserver.HTTPServer(container, io_loop=self.xmlrpc_ioloop)
+        self.xmlrpc_server.listen(port=port, address=bind)
+        self.xmlrpc_ioloop.start()
+
+    def on_request(self, task):
+        if self.INQUEUE_LIMIT and len(self.task_queue[task['project']]) >= self.INQUEUE_LIMIT:
+            logger.debug('overflow task %(project)s:%(taskid)s %(url)s', task)
+            return
+
+        oldtask = self.taskdb.get_task(task['project'], task['taskid'],
+                                       fields=self.merge_task_fields)
+        if oldtask:
+            return self.on_old_request(task, oldtask)
+        else:
+            return self.on_new_request(task)
 
     def on_new_request(self, task):
         '''Called when a new request is arrived'''
@@ -846,7 +886,7 @@ class OneScheduler(Scheduler):
             'quit_pyspider() - Close pyspider'
         )
         if not is_crawled:
-            self.ioloop.stop()
+            self.ioloop.add_callback(self.ioloop.stop)
 
     def __getattr__(self, name):
         """patch for crawl(url, callback=self.index_page) API"""
@@ -921,3 +961,120 @@ class OneScheduler(Scheduler):
     def quit(self):
         self.ioloop.stop()
         logger.info("scheduler exiting...")
+
+
+import random
+import threading
+
+
+class ThreadBaseScheduler(Scheduler):
+    def __init__(self, threads=4, *args, **kwargs):
+        self.threads = threads
+        self.local = threading.local()
+
+        super(ThreadBaseScheduler, self).__init__(*args, **kwargs)
+
+        self._taskdb = self.taskdb
+        self._projectdb = self.projectdb
+        self._resultdb = self.resultdb
+
+        self.thread_objs = []
+        self.thread_queues = []
+        self._start_threads()
+        assert len(self.thread_queues) > 0
+
+    @property
+    def taskdb(self):
+        if not hasattr(self.local, 'taskdb'):
+            self.taskdb = self._taskdb.copy()
+        return self.local.taskdb
+
+    @taskdb.setter
+    def taskdb(self, taskdb):
+        self.local.taskdb = taskdb
+
+    @property
+    def projectdb(self):
+        if not hasattr(self.local, 'projectdb'):
+            self.projectdb = self._projectdb.copy()
+        return self.local.projectdb
+
+    @projectdb.setter
+    def projectdb(self, projectdb):
+        self.local.projectdb = projectdb
+
+    @property
+    def resultdb(self):
+        if not hasattr(self.local, 'resultdb'):
+            self.resultdb = self._resultdb.copy()
+        return self.local.resultdb
+
+    @resultdb.setter
+    def resultdb(self, resultdb):
+        self.local.resultdb = resultdb
+
+    def _start_threads(self):
+        for i in range(self.threads):
+            queue = Queue.Queue()
+            thread = threading.Thread(target=self._thread_worker, args=(queue, ))
+            thread.daemon = True
+            thread.start()
+            self.thread_objs.append(thread)
+            self.thread_queues.append(queue)
+
+    def _thread_worker(self, queue):
+        while True:
+            method, args, kwargs = queue.get()
+            try:
+                method(*args, **kwargs)
+            except Exception as e:
+                logger.exception(e)
+
+    def _run_in_thread(self, method, *args, **kwargs):
+        i = kwargs.pop('_i', None)
+        block = kwargs.pop('_block', False)
+
+        if i is None:
+            while True:
+                for queue in self.thread_queues:
+                    if queue.empty():
+                        break
+                else:
+                    if block:
+                        time.sleep(0.1)
+                        continue
+                    else:
+                        queue = self.thread_queues[random.randint(0, len(self.thread_queues)-1)]
+                break
+        else:
+            queue = self.thread_queues[i % len(self.thread_queues)]
+
+        queue.put((method, args, kwargs))
+
+        if block:
+            self._wait_thread()
+
+    def _wait_thread(self):
+        while True:
+            if all(queue.empty() for queue in self.thread_queues):
+                break
+            time.sleep(0.1)
+
+    def _update_project(self, project):
+        self._run_in_thread(Scheduler._update_project, self, project)
+
+    def on_task_status(self, task):
+        i = hash(task['taskid'])
+        self._run_in_thread(Scheduler.on_task_status, self, task, _i=i)
+
+    def on_request(self, task):
+        i = hash(task['taskid'])
+        self._run_in_thread(Scheduler.on_request, self, task, _i=i)
+
+    def _load_put_task(self, project, taskid):
+        i = hash(taskid)
+        self._run_in_thread(Scheduler._load_put_task, self, project, taskid, _i=i)
+
+    def run_once(self):
+        super(ThreadBaseScheduler, self).run_once()
+        self._wait_thread()

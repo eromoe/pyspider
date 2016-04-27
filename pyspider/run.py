@@ -181,16 +181,24 @@ def cli(ctx, **kwargs):
               help='delete time before marked as delete')
 @click.option('--active-tasks', default=100, help='active log size')
 @click.option('--loop-limit', default=1000, help='maximum number of tasks due with in a loop')
-@click.option('--scheduler-cls', default='pyspider.scheduler.Scheduler', callback=load_cls,
+@click.option('--scheduler-cls', default='pyspider.scheduler.ThreadBaseScheduler', callback=load_cls,
               help='scheduler class to be used.')
+@click.option('--threads', default=None, help='thread number for ThreadBaseScheduler, default: 4')
 @click.pass_context
 def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
-              inqueue_limit, delete_time, active_tasks, loop_limit, bloomfilter_on, bloomfilter_rpc, scheduler_cls):
+              inqueue_limit, delete_time, active_tasks, loop_limit, scheduler_cls,
+              threads, bloomfilter_on, bloomfilter_rpc):
     """
     Run Scheduler, only one scheduler is allowed.
     """
     g = ctx.obj
     Scheduler = load_cls(None, None, scheduler_cls)
+
+    kwargs = dict(taskdb=g.taskdb, projectdb=g.projectdb, resultdb=g.resultdb,
+                  newtask_queue=g.newtask_queue, status_queue=g.status_queue,
+                  out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'))
+    if threads:
+        kwargs['threads'] = int(threads)
 
     if bloomfilter_on:
         bloomfilter_config = g.config.get('bloomfilter', {})
@@ -201,10 +209,7 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
     else:
         bloomfilter_rpc = None
 
-    scheduler = Scheduler(taskdb=g.taskdb, projectdb=g.projectdb, resultdb=g.resultdb,
-                          newtask_queue=g.newtask_queue, status_queue=g.status_queue,
-                          out_queue=g.scheduler2fetcher, data_path=g.get('data_path', 'data'), 
-                          bloomfilter_rpc=bloomfilter_rpc)
+    scheduler = Scheduler(**kwargs)
 
     scheduler.INQUEUE_LIMIT = inqueue_limit
     scheduler.DELETE_TIME = delete_time
@@ -406,7 +411,7 @@ def webui(ctx, host, port, cdn, scheduler_rpc, fetcher_rpc, max_rate, max_burst,
         g['fetcher2processor'] = fetcher2processor
         g['testing_mode'] = testing_mode
 
-        app.config['fetch'] = lambda x: webui_fetcher.fetch(x)[1]
+        app.config['fetch'] = lambda x: webui_fetcher.fetch(x)
 
     if isinstance(scheduler_rpc, six.string_types):
         scheduler_rpc = connect_rpc(ctx, None, scheduler_rpc)
