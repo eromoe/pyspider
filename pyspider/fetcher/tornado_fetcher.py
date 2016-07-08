@@ -68,6 +68,7 @@ class Fetcher(object):
         },
         'use_gzip': True,
         'timeout': 120,
+        'connect_timeout': 20,
     }
     phantomjs_proxy = None
     robot_txt_age = 60*60  # 1h
@@ -231,17 +232,15 @@ class Fetcher(object):
             if '://' not in proxy_string:
                 proxy_string = 'http://' + proxy_string
             proxy_splited = urlsplit(proxy_string)
+            fetch['proxy_host'] = proxy_splited.hostname
             if proxy_splited.username:
                 fetch['proxy_username'] = proxy_splited.username
-                if six.PY2:
-                    fetch['proxy_username'] = fetch['proxy_username'].encode('utf8')
             if proxy_splited.password:
                 fetch['proxy_password'] = proxy_splited.password
-                if six.PY2:
-                    fetch['proxy_password'] = fetch['proxy_password'].encode('utf8')
-            fetch['proxy_host'] = proxy_splited.hostname.encode('utf8')
             if six.PY2:
-                fetch['proxy_host'] = fetch['proxy_host'].encode('utf8')
+                for key in ('proxy_host', 'proxy_username', 'proxy_password'):
+                    if key in fetch:
+                        fetch[key] = fetch[key].encode('utf8')
             fetch['proxy_port'] = proxy_splited.port or 8080
 
         # etag
@@ -265,7 +264,7 @@ class Fetcher(object):
                 fetch['headers']['If-Modified-Since'] = _t
         # timeout
         if 'timeout' in fetch:
-            fetch['connect_timeout'] = fetch['request_timeout'] = fetch['timeout']
+            fetch['request_timeout'] = fetch['timeout']
             del fetch['timeout']
         # data rename to body
         if 'data' in fetch:
@@ -390,7 +389,6 @@ class Fetcher(object):
                 fetch['request_timeout'] -= time.time() - start_time
                 if fetch['request_timeout'] < 0:
                     fetch['request_timeout'] = 0.1
-                fetch['connect_timeout'] = fetch['request_timeout']
                 max_redirects -= 1
                 continue
 
@@ -456,7 +454,7 @@ class Fetcher(object):
         request_conf = {
             'follow_redirects': False
         }
-        request_conf['connect_timeout'] = fetch.get('connect_timeout', 120)
+        request_conf['connect_timeout'] = fetch.get('connect_timeout', 20)
         request_conf['request_timeout'] = fetch.get('request_timeout', 120)
 
         session = cookies.RequestsCookieJar()

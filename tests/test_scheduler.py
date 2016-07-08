@@ -204,6 +204,17 @@ class TestScheduler(unittest.TestCase):
         self.assertIsNotNone(task)
         self.assertEqual(task['taskid'], '_on_get_info')  # select test_project:_on_get_info data:,_on_get_info
 
+    def test_32_get_info(self):
+        self.status_queue.put({
+            'taskid': '_on_get_info',
+            'project': 'test_project',
+            'track': {
+                'save': {
+                    }
+                }
+            })
+        # test_project on_get_info {}
+
     def test_34_new_not_used_project(self):
         '''
         task_queue = []
@@ -319,8 +330,8 @@ class TestScheduler(unittest.TestCase):
             }
         })  # task retry 0/3 test_project:taskid url
         from six.moves import queue as Queue
-        with self.assertRaises(Queue.Empty):
-            task = self.scheduler2fetcher.get(timeout=4)
+        # with self.assertRaises(Queue.Empty):
+            # task = self.scheduler2fetcher.get(timeout=4)
         task = self.scheduler2fetcher.get(timeout=5)  # select test_project:taskid url
         self.assertIsNotNone(task)
 
@@ -617,6 +628,49 @@ class TestScheduler(unittest.TestCase):
         from six.moves import queue as Queue
         with self.assertRaises(Queue.Empty):
             self.scheduler2fetcher.get(timeout=5)
+
+    def test_38_cancel_task(self):
+        current_size = self.rpc.size()
+        self.newtask_queue.put({
+            'taskid': 'taskid_to_cancel',
+            'project': 'test_project',
+            'url': 'url',
+            'fetch': {
+                'data': 'abc',
+            },
+            'process': {
+                'data': 'abc',
+            },
+            'schedule': {
+                'age': 0,
+                'exetime': time.time() + 30
+            },
+        })  # new task test_project:taskid_to_cancel url
+        # task_queue = [ test_project:taskid_to_cancel ]
+
+        time.sleep(0.2)
+        self.assertEqual(self.rpc.size(), current_size+1)
+
+        self.newtask_queue.put({
+            'taskid': 'taskid_to_cancel',
+            'project': 'test_project',
+            'url': 'url',
+            'fetch': {
+                'data': 'abc',
+            },
+            'process': {
+                'data': 'abc',
+            },
+            'schedule': {
+                'force_update': True,
+                'age': 0,
+                'cancel': True
+            },
+        })  # new cancel test_project:taskid_to_cancel url
+        # task_queue = [ ]
+
+        time.sleep(0.2)
+        self.assertEqual(self.rpc.size(), current_size)
 
     def test_x10_inqueue_limit(self):
         self.projectdb.insert('test_inqueue_project', {
