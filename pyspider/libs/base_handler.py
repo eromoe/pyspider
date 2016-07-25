@@ -212,7 +212,7 @@ class BaseHandler(object):
         module.log_buffer[:] = []
         return ProcessorResult(result, follows, messages, logs, exception, extinfo, save)
 
-    schedule_fields = ('priority', 'retries', 'exetime', 'age', 'itag', 'force_update', 'auto_recrawl', 'cancel')
+    schedule_fields = ('priority', 'retries', 'exetime', 'age', 'itag', 'force_update', 'auto_recrawl', 'cancel', 'bloomfilter_on')
     fetch_fields = ('method', 'headers', 'data', 'connect_timeout', 'timeout', 'allow_redirects', 'cookies',
                     'proxy', 'etag', 'last_modifed', 'last_modified', 'save', 'js_run_at', 'js_script',
                     'js_viewport_width', 'js_viewport_height', 'load_images', 'fetch_type', 'use_gzip', 'validate_cert',
@@ -286,19 +286,8 @@ class BaseHandler(object):
             kwargs.setdefault('method', 'POST')
 
         schedule = {}
-<<<<<<< HEAD
-        for key in ('priority', 
-                    'retries', 
-                    'exetime', 
-                    'age', 
-                    'itag', 
-                    'force_update',
-                    'auto_recrawl',
-                    'bloomfilter_on',
-        ):
-=======
+
         for key in self.schedule_fields:
->>>>>>> 0742654a7f9fd4606e946a2c4717f733b2707dd3
             if key in kwargs:
                 schedule[key] = kwargs.pop(key)
             elif key in self.crawl_config:
