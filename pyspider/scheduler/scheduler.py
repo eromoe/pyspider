@@ -411,19 +411,23 @@ class Scheduler(object):
                 if not self.task_verify(task):
                     continue
 
-                # logger.info('task: %s', task)
-                if not task.get('schedule', {}).get('force_update', False):
-                    if task.get('schedule', {}).get('bloomfilter_on', False) and task['taskid']!='on_start':
-                        if self._bloomfilter_add(task['url']):
-                            logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
-                            continue
+                # # logger.info('task: %s', task)
+                # if not task.get('schedule', {}).get('force_update', False):
+                #     if task.get('schedule', {}).get('bloomfilter_on', False) and task['taskid']!='on_start':
+                #         if self._bloomfilter_add(task['url']):
+                #             logger.info('bloomfilter ignore newtask %(project)s:%(taskid)s %(url)s', task)
+                #             continue
+
+                #     if task['taskid'] in self.task_queue[task['project']]:
+
 
                 if task['taskid'] in self.projects[task['project']].task_queue:
                     if not task.get('schedule', {}).get('force_update', False):
                         logger.debug('ignore newtask %(project)s:%(taskid)s %(url)s', task)
                         continue
 
-                    if task['taskid'] in tasks:
+                if task['taskid'] in tasks:
+                    if not task.get('schedule', {}).get('force_update', False):
                         continue
 
                 tasks[task['taskid']] = task
@@ -432,6 +436,7 @@ class Scheduler(object):
             self.on_request(task)
 
         return len(tasks)
+
 
     def _check_cronjob(self):
         """Check projects cronjob tick, return True when a new tick is sended"""
