@@ -34,7 +34,7 @@ if (system.args.length !== 2) {
       response.closeGracefully();
       return;
     }
-    
+
     var first_response = null,
         finished = false,
         page_loaded = false,
@@ -166,6 +166,11 @@ if (system.args.length !== 2) {
           save: fetch.save
         }
       }
+
+      page.clearMemoryCache();
+      page.close();
+      finished = true;
+      console.log("["+result.status_code+"] "+result.orig_url+" "+result.time)
 
       var body = JSON.stringify(result, null, 2);
       response.writeHead(200, {
