@@ -34,7 +34,7 @@ if (system.args.length !== 2) {
       response.closeGracefully();
       return;
     }
-    
+
     var first_response = null,
         finished = false,
         page_loaded = false,
@@ -159,6 +159,7 @@ if (system.args.length !== 2) {
         }
       }
 
+      page.clearMemoryCache();
       page.close();
       finished = true;
       console.log("["+result.status_code+"] "+result.orig_url+" "+result.time)
