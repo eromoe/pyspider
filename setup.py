@@ -31,6 +31,7 @@ install_requires = [
     'u-msgpack-python>=1.6',
     'click>=3.3',
     'six>=1.5.0',
+    'tblib>=1.3.0'
 ]
 if sys.version_info < (3, 0):
     install_requires.extend([
@@ -44,7 +45,7 @@ extras_require_all = [
     'redis',
     'kombu',
     'psycopg2',
-    'elasticsearch',
+    'elasticsearch>=2.0.0,<2.4.0',
 ]
 if sys.version_info < (2, 7) or sys.version_info >= (3, 0):
     extras_require_all.extend([
@@ -83,6 +84,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
 
         'License :: OSI Approved :: Apache Software License',
 

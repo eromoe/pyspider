@@ -159,6 +159,7 @@ if (system.args.length !== 2) {
         }
       }
 
+
       page.clearMemoryCache();
       page.close();
       finished = true;
