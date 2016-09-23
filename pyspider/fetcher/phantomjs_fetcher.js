@@ -167,7 +167,9 @@ if (system.args.length !== 2) {
         }
       }
 
+      // clear cache for some site
       page.clearMemoryCache();
+      
       page.close();
       finished = true;
       console.log("["+result.status_code+"] "+result.orig_url+" "+result.time)
