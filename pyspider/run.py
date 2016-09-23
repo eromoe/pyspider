@@ -91,7 +91,7 @@ def cli(ctx, **kwargs):
     """
     A powerful spider system in python.
     """
-    
+
     sys.path.insert(0, os.getcwd())
     if kwargs['add_sys_path']:
         sys.path.append(os.getcwd())
@@ -187,7 +187,7 @@ def cli(ctx, **kwargs):
 @click.pass_context
 def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
               inqueue_limit, delete_time, active_tasks, loop_limit, scheduler_cls,
-              threads, bloomfilter_on, bloomfilter_rpc):
+              threads, bloomfilter_on, bloomfilter_rpc, get_object=False):
     """
     Run Scheduler, only one scheduler is allowed.
     """
@@ -251,7 +251,7 @@ def bloomfilter(ctx, xmlrpc, xmlrpc_host, xmlrpc_port, key, capacity, error, red
         from six.moves.urllib.parse import urlparse
         parsed = urlparse(url)
         # ParseResult(scheme='', netloc='127.0.0.1:6379', path='/0', params='', query='', fragment='')
-        bloomfilter = RedisBloomFilter(key, capacity, error, 
+        bloomfilter = RedisBloomFilter(key, capacity, error,
             parsed.hostname, parsed.port, int(parsed.path.strip('/') or 0))
 
     g.instances.append(bloomfilter)
