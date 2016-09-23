@@ -113,6 +113,7 @@
           <tr>
             <th>group</th>
             <th>project name</th>
+            <th>alias</th>
             <th>status</th>
             <th data-type="num">rate/burst</th>
             <th data-type="num">avg time</th>
@@ -128,6 +129,7 @@
           <tr v-cloak v-for="project in projects" data-name="{{* project.name }}">
             <td class="project-group"><span>{{ project.group }}</span></td>
             <td class="project-name"><a href="/debug/{{* project.name }}">{{* project.name }}</a></td>
+            <td class="project-alias"><span>{{ project['alias'] or '' }}</span></td>
             <td class="project-status">
               <span class="status-{{ project.paused ? 'PAUSED' : project.status }}" :data-value="project.paused ? 'PAUSED' : project.status">
                 {{ project.paused ? 'PAUSED' : project.status }}

@@ -26,6 +26,7 @@ class ProjectDB(BaseProjectDB):
         if each is None:
             return each
         each.setdefault('group', None)
+        each.setdefault('alias', None)
         each.setdefault('status', 'TODO')
         each.setdefault('script', '')
         each.setdefault('comments', None)
