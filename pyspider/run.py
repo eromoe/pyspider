@@ -227,6 +227,45 @@ def scheduler(ctx, xmlrpc, xmlrpc_host, xmlrpc_port,
 
 
 @cli.command()
+@click.option('--xmlrpc/--no-xmlrpc', default=True)
+@click.option('--xmlrpc-host', default='0.0.0.0')
+@click.option('--xmlrpc-port', envvar='BLOOMFILTER_XMLRPC_PORT', default=13100)
+@click.option('--key', default='pyspider')
+@click.option('--capacity', default=100000)
+@click.option('--error', default=0.001)
+@click.option('--redis', default='//127.0.0.1:6379/0')
+# @click.option('--bloomfilter-cls', default='pyspider.filter.Scheduler', callback=load_cls,
+#               help='bloomfilter class to be used.')
+@click.pass_context
+def bloomfilter(ctx, xmlrpc, xmlrpc_host, xmlrpc_port, key, capacity, error, redis):
+    """
+    Run bloomfilter, only one bloomfilter is allowed.
+    """
+    g = ctx.obj
+
+    if os.name == 'nt':
+        from pyspider.filter import BloomFilter
+        bloomfilter = BloomFilter(key, capacity, error)
+    else:
+        from pyspider.filter import RedisBloomFilter
+        from six.moves.urllib.parse import urlparse
+        parsed = urlparse(url)
+        # ParseResult(scheme='', netloc='127.0.0.1:6379', path='/0', params='', query='', fragment='')
+        bloomfilter = RedisBloomFilter(key, capacity, error,
+            parsed.hostname, parsed.port, int(parsed.path.strip('/') or 0))
+
+    g.instances.append(bloomfilter)
+    if g.get('testing_mode'):
+        return bloomfilter
+
+
+    if xmlrpc:
+        utils.run_in_thread(bloomfilter.xmlrpc_run, port=xmlrpc_port, bind=xmlrpc_host)
+    bloomfilter.run()
+
+
+
+@cli.command()
 @click.option('--xmlrpc/--no-xmlrpc', default=False)
 @click.option('--xmlrpc-host', default='0.0.0.0')
 @click.option('--xmlrpc-port', envvar='FETCHER_XMLRPC_PORT', default=24444)
