@@ -14,6 +14,16 @@ $(function() {
     url: "/update"
   });
 
+  $(".project-alias>span").editable({
+    name: 'alias',
+    pk: function(e) {
+      return $(this).parents('tr').data("name");
+    },
+    emptytext: '[alias]',
+    placement: 'right',
+    url: "/update"
+  });
+
   $(".project-status>span").editable({
     type: 'select',
     name: 'status',
@@ -61,7 +71,7 @@ $(function() {
     if (status != "RUNNING" && status != "DEBUG") {
       $("#need-set-status-alert").show();
     }
-    
+
     var _this = this;
     $(this).addClass("btn-warning");
     $.ajax({

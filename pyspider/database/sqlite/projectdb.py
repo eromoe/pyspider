@@ -23,6 +23,7 @@ class ProjectDB(SQLiteMixin, BaseProjectDB, BaseDB):
         self._execute('''CREATE TABLE IF NOT EXISTS `%s` (
                 name PRIMARY KEY,
                 `group`,
+                `alias`,
                 status, script, comments,
                 rate, burst, updatetime
                 )''' % self.__tablename__)
