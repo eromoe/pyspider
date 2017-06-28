@@ -300,6 +300,7 @@ class BaseHandler(object):
             kwargs['headers']['User-Agent'] = kwargs.get('user_agent')
 
         schedule = {}
+
         for key in self.schedule_fields:
             if key in kwargs:
                 schedule[key] = kwargs.pop(key)
