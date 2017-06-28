@@ -176,10 +176,9 @@ class Scheduler(object):
         self.status_queue = status_queue
         self.out_queue = out_queue
         self.data_path = data_path
-        self.bloomfilter = bloomfilter
-        if self.bloomfilter:
-            self.bloomfilter.fromfile()
-            self._bloomfiter_add = self.bloomfilter.add
+        self.bloomfilter_rpc = bloomfilter_rpc
+        if self.bloomfilter_rpc is not None:
+            self._bloomfilter_add = self.bloomfilter_rpc.add
 
         self._send_buffer = deque()
         self._quit = False
@@ -349,12 +348,12 @@ class Scheduler(object):
             else:
                 raise
 
-    def _bloomfiter_add(self, key):
+    def _bloomfilter_add(self, key):
         return False
 
     def _check_task_url_duplicate(self, task):
         ''' check duplicate tasks '''
-        return self._check_bloomfiter_contains(task['url'])
+        return self._check_bloomfilter_contains(task['url'])
 
     def _check_task_done(self):
         '''Check status queue'''
@@ -941,12 +940,7 @@ class Scheduler(object):
 
         retries = task['schedule'].get('retries', self.default_schedule['retries'])
         retried = task['schedule'].get('retried', 0)
-        if retried == 0:
-            next_exetime = 0
-        elif retried == 1:
-            next_exetime = self.DELAY_BASE_TIME
-        else:
-            next_exetime = (2 ** retried) * self.DELAY_BASE_TIME
+		
 
         project_info = self.projects[task['project']]
         retry_delay = project_info.retry_delay or self.DEFAULT_RETRY_DELAY
@@ -1176,8 +1170,6 @@ class OneScheduler(Scheduler):
 
     def quit(self):
         self.ioloop.stop()
-        if self.bloomfilter:
-            self.bloomfilter.tofile()
         logger.info("scheduler exiting...")
 
 
